@@ -1,0 +1,14 @@
+DHANI/
+│── index.html
+│── about.html
+│── services.html
+│── gallery.html
+│── contact.html
+│── login.html
+│── register.html
+│── style.css
+│── script.js
+│── assets/
+│    ├── images/
+│    └── icons/
+└── README.md
