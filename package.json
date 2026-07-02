@@ -9,7 +9,7 @@
     "restart": "pm2 restart DHANI-MD"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^7.0.0",
+    "@whiskeysockets/baileys": "^6.7.23",
     "api-volcx": "^1.0.0",
     "axios": "^1.18.1",
     "browser-id3-writer": "^6.3.1",
