@@ -68,12 +68,14 @@ async function ensureSessionFile() {
       const sessdata = config.SESSION_ID;
       try {
         const data = await downloadFromMEGA(`https://mega.nz/file/${sessdata}`);
-        fs.writeFileSync(credsPath, data);
+        // Ensure we write a Buffer (data may already be a Buffer, string, or ArrayBuffer)
+        const bufferData = Buffer.isBuffer(data) ? data : Buffer.from(data);
+        fs.writeFileSync(credsPath, bufferData);
         console.log("✅ Session downloaded and saved. Connecting to WhatsApp...");
         await sleep(2000);
         await connectToWA();
       } catch (e) {
-        console.error('❌ Error while fetching session from MEGA:', e.message || e);
+        console.error('❌ Error while fetching session from MEGA:', (e && e.message) || e);
         process.exit(1);
       }
     } else {
@@ -90,7 +92,18 @@ async function connectToWA() {
   try {
     console.log("Connecting DHANI-MD 🧬...");
     const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, '/auth_info_baileys/'));
-    const { version } = await fetchLatestBaileysVersion();
+
+    // fetchLatestBaileysVersion may return either an array [version, isLatest]
+    // or an object { version, isLatest } depending on the baileys version.
+    const latest = await fetchLatestBaileysVersion();
+    let version;
+    if (Array.isArray(latest)) {
+      version = latest[0];
+    } else if (latest && typeof latest === 'object' && latest.version) {
+      version = latest.version;
+    } else {
+      version = latest;
+    }
 
     const dhani = makeWASocket({
       logger: P({ level: 'silent' }),
