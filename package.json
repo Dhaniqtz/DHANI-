@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.23",
-    "api-volcx": "^1.0.0",
     "axios": "^1.18.1",
     "browser-id3-writer": "^6.3.1",
     "cheerio": "^1.2.0",
