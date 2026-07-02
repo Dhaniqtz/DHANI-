@@ -31,30 +31,40 @@ const ownerNumber = ['94719002563'];
 const credsPath = path.join(__dirname, '/auth_info_baileys/creds.json');
 
 async function ensureSessionFile() {
+  // Make sure auth directory exists
+  fs.mkdirSync(path.join(__dirname, '/auth_info_baileys/'), { recursive: true });
+
   if (!fs.existsSync(credsPath)) {
+    // If SESSION_ID is not provided, allow fresh auth (QR) instead of exiting
     if (!config.SESSION_ID) {
-      console.error('❌ SESSION_ID env variable is missing. Cannot restore session.');
-      process.exit(1);
+      console.warn('⚠️  creds.json not found and SESSION_ID not provided. Proceeding with fresh auth — a QR will be printed to the console.');
+      // Start the connection flow which will generate auth files and QR
+      setTimeout(() => connectToWA(), 1000);
+      return;
     }
 
     console.log("🔄 creds.json not found. Downloading session from MEGA...");
 
     const sessdata = config.SESSION_ID;
-    const filer = File.fromURL(`https://mega.nz/file/${sessdata}`);
+    try {
+      const filer = File.fromURL(`https://mega.nz/file/${sessdata}`);
 
-    filer.download((err, data) => {
-      if (err) {
-        console.error("❌ Failed to download session file from MEGA:", err);
-        process.exit(1);
-      }
+      filer.download((err, data) => {
+        if (err) {
+          console.error("❌ Failed to download session file from MEGA:", err);
+          process.exit(1);
+        }
 
-      fs.mkdirSync(path.join(__dirname, '/auth_info_baileys/'), { recursive: true });
-      fs.writeFileSync(credsPath, data);
-      console.log("✅ Session downloaded and saved. Restarting bot...");
-      setTimeout(() => {
-        connectToWA();
-      }, 2000);
-    });
+        fs.writeFileSync(credsPath, data);
+        console.log("✅ Session downloaded and saved. Restarting bot...");
+        setTimeout(() => {
+          connectToWA();
+        }, 2000);
+      });
+    } catch (e) {
+      console.error('❌ Error while fetching session from MEGA:', e);
+      process.exit(1);
+    }
   } else {
     setTimeout(() => {
       connectToWA();
@@ -79,25 +89,43 @@ async function connectToWA() {
   });
 
   dhani.ev.on('connection.update', async (update) => {
+    // If QR is present (fresh auth), print it so the user can scan it
+    if (update.qr) {
+      console.log('🔐 Please scan the QR code with your WhatsApp account:');
+      qrcode.generate(update.qr, { small: true });
+    }
+
     const { connection, lastDisconnect } = update;
     if (connection === 'close') {
       if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
         connectToWA();
+      } else {
+        console.log('➡️ Logged out from WA, please restore session or login again.');
       }
     } else if (connection === 'open') {
       console.log('✅ DHANI-MD connected to WhatsApp');
 
       const up = `DHANI-MD connected ✅\n\nPREFIX: ${prefix}`;
-      await dhani.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
-        image: { url: `https://github.com/Dhaniqtz/DHANI-/blob/main/images/` },
-        caption: up
-      });
+      // send a simple text notification to the owner to avoid invalid image URL issues
+      try {
+        await dhani.sendMessage(ownerNumber[0] + "@s.whatsapp.net", { text: up });
+      } catch (e) {
+        console.warn('⚠️ Failed to notify owner on connect:', e && e.message ? e.message : e);
+      }
 
-      fs.readdirSync("./plugins/").forEach((plugin) => {
-        if (path.extname(plugin).toLowerCase() === ".js") {
-          require(`./plugins/${plugin}`);
+      try {
+        if (fs.existsSync('./plugins/')) {
+          fs.readdirSync("./plugins/").forEach((plugin) => {
+            if (path.extname(plugin).toLowerCase() === ".js") {
+              try { require(`./plugins/${plugin}`); } catch (err) { console.error('[PLUGIN LOAD ERROR]', plugin, err); }
+            }
+          });
+        } else {
+          console.log('ℹ️ No plugins directory found.');
         }
-      });
+      } catch (e) {
+        console.error('Error loading plugins:', e);
+      }
     }
   });
 
