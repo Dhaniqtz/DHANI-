@@ -89,7 +89,7 @@ async function connectToWA() {
 
       const up = `DHANI-MD connected ✅\n\nPREFIX: ${prefix}`;
       await dhani.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
-        image: { url: `https://github.com/Dhaniqtz/DHANI-/blob/main/images/file_00000000d60871fd86e88fa5ba092f9d.png` },
+        image: { url: `https://github.com/Dhaniqtz/DHANI-/blob/main/images/` },
         caption: up
       });
 
